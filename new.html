@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truth or Trap: Cyber Awareness Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Hind:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="game-container">
+        <video id="video" autoplay muted playsinline></video>
+        <div id="score-board">
+            <div><span id="score-label">Score</span>: <span id="score">0</span> | <span id="lives-label">Lives</span>: <span id="lives">3</span></div>
+            <div id="high-score"><span id="highscore-label">High Score</span>: <span id="high-score-value">0</span></div>
+        </div>
+        <div id="trap-indicator" class="side-indicator">TRAP</div>
+        <div id="truth-indicator" class="side-indicator">TRUTH</div>
+        <div id="scenario-card">
+            <div id="result-icon"></div>
+            <p id="scenario-text">Loading Game...</p>
+        </div>
+        <div id="button-controls">
+            <button id="trap-btn" class="control-btn">TRAP</button>
+            <button id="truth-btn" class="control-btn">TRUTH</button>
+        </div>
+
+        <!-- Main Game Modal -->
+        <div id="modal" class="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 hidden">
+            <div class="modal-content p-8 rounded-2xl text-center max-w-lg w-full">
+                <h2 id="modal-title" class="modal-title text-4xl font-bold mb-4"></h2>
+                <p id="modal-text" class="modal-text mb-6 text-xl"></p>
+                <button id="modal-button" class="modal-button bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg text-2xl"></button>
+                <button id="retry-webcam-button" class="mt-4 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg hidden">Try Webcam Again</button>
+            </div>
+        </div>
+        
+        <!-- Language Selection Modal -->
+        <div id="language-modal" class="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
+            <div class="modal-content p-8 rounded-2xl text-center max-w-lg w-full">
+                <h2 class="modal-title text-4xl font-bold mb-4">Choose Language</h2>
+                <div class="flex justify-center gap-4 mt-6">
+                    <button id="lang-en-btn" class="modal-button bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-lg text-2xl">English</button>
+                    <button id="lang-mr-btn" class="modal-button bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-lg text-2xl marathi">मराठी</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const video = document.getElementById('video');
+        const scoreEl = document.getElementById('score');
+        const livesEl = document.getElementById('lives');
+        const highScoreEl = document.getElementById('high-score-value');
+        const scenarioTextEl = document.getElementById('scenario-text');
+        const scenarioCard = document.getElementById('scenario-card');
+        const resultIcon = document.getElementById('result-icon');
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalText = document.getElementById('modal-text');
+        const modalButton = document.getElementById('modal-button');
+        const retryWebcamButton = document.getElementById('retry-webcam-button');
+        const trapIndicator = document.getElementById('trap-indicator');
+        const truthIndicator = document.getElementById('truth-indicator');
+        const trapBtn = document.getElementById('trap-btn');
+        const truthBtn = document.getElementById('truth-btn');
+        const buttonControls = document.getElementById('button-controls');
+        const languageModal = document.getElementById('language-modal');
+        const langEnBtn = document.getElementById('lang-en-btn');
+        const langMrBtn = document.getElementById('lang-mr-btn');
+        
+        // --- Game State & Data ---
+        let score = 0, lives = 3, currentScenarioIndex = -1, gameActive = false, answerMade = false;
+        let highScore = 0;
+        let scenarios = [];
+        let currentLanguage = 'en';
+
+        const uiText = {
+            en: {
+                score: "Score", lives: "Lives", highScore: "High Score", trap: "TRAP", truth: "TRUTH",
+                welcomeTitle: "Welcome to Truth or Trap!",
+                welcomeText: "Your head is the controller! Tilt LEFT for 'Trap' 👈 and RIGHT for 'Truth' 👉",
+                loadingModels: "Loading AI Brains...",
+                letsGo: "Let's Go!",
+                webcamDeniedTitle: "Uh Oh!",
+                webcamDeniedText: "Webcam access is needed for head-tilt controls. You can still use the buttons below.<br><br>If you want to enable it, check your browser's site settings and click retry.",
+                webcamDeniedBtn: "Webcam Denied",
+                retryWebcam: "Try Webcam Again",
+                buttonsOnly: "Start Game (Buttons Only)",
+                modelErrorTitle: "Network Error!",
+                modelErrorText: "Could not load the AI models. Please check your internet and refresh.",
+                modelErrorBtn: "Load Failed",
+                correct: "Correct!",
+                incorrect: "Oh no!",
+                nextQuestion: "Next Question",
+                gameOver: "Game Over!",
+                gameOverText: (s, hs) => `You finished with a score of ${s}! Your high score is ${hs}.`,
+                playAgain: "Play Again!"
+            },
+            mr: {
+                score: "Score", lives: "Lives", highScore: "HighScore", trap: "Trap", truth: "Truth",
+                welcomeTitle: "Welcome To Truth OR Trap!",
+                welcomeText: "Your head is the controller! Tilt LEFT for 'Trap' 👈 and RIGHT for 'Truth' 👉",
+                loadingModels: "Game Will Be Start Soon...",
+                letsGo: "LET's Start!",
+                webcamDeniedTitle: "OH NO!",
+                webcamDeniedText: "हेड-टिल्ट नियंत्रणासाठी वेबकॅम आवश्यक आहे. तुम्ही खालील बटणे वापरू शकता.<br><br>सक्षम करण्यासाठी, ब्राउझर सेटिंग्ज तपासा आणि पुन्हा प्रयत्न करा.",
+                webcamDeniedBtn: "Webcam Denied",
+                retryWebcam: "Webcam trying again",
+                buttonsOnly: "खेळ सुरू करा (केवळ बटणे)",
+                modelErrorTitle: "Network Error!",
+                modelErrorText: "AI मॉडेल लोड होऊ शकले नाही. कृपया तुमचे इंटरनेट तपासा आणि रिफ्रेश करा.",
+                modelErrorBtn: "Loaded Successfully",
+                correct: "बरोबर!",
+                incorrect: "चुकले!",
+                nextQuestion: "Next Question",
+                gameOver: "Game OVER!",
+                gameOverText: (s, hs) => `तुम्ही ${s} गुणांसह खेळ संपवला! तुमचा उच्चांक ${hs} आहे.`,
+                playAgain: "PLAY AGAIN!"
+            }
+        };
+
+        const gameScenarios = [
+            { type: "TRAP", en: { text: "Email from 'Banc of Amerika' says your account is locked. It asks you to click a link to verify.", explanation: "This is a trap! Notice the misspelling 'Banc'. This is a common phishing tactic." }, mr: { text: "'बँक ऑफ अमेरिका' कडून ईमेल आला आहे की तुमचे खाते लॉक झाले आहे. सत्यापित करण्यासाठी लिंकवर क्लिक करण्यास सांगितले आहे.", explanation: "हा एक सापळा आहे! 'Banc' हे चुकीचे स्पेलिंग लक्षात घ्या. ही एक सामान्य फिशिंग युक्ती आहे." } },
+            { type: "TRUTH", en: { text: "You receive a password reset email from a social media site that you requested minutes ago.", explanation: "This is likely truth. It's a response to an action you initiated." }, mr: { text: "तुम्ही काही मिनिटांपूर्वी विनंती केलेला पासवर्ड रीसेट ईमेल सोशल मीडिया साइटवरून आला आहे.", explanation: "हे सत्य असण्याची शक्यता आहे. तुम्ही सुरू केलेल्या कृतीला हा प्रतिसाद आहे." } },
+            { type: "TRAP", en: { text: "A pop-up says: 'CONGRATULATIONS! You've won a free iPhone! Enter credit card details to claim.'", explanation: "This is a trap! Legitimate prizes don't require your credit card info." }, mr: { text: "एक पॉप-अप म्हणतो: 'अभिनंदन! तुम्ही एक विनामूल्य आयफोन जिंकला आहे! दावा करण्यासाठी क्रेडिट कार्ड तपशील प्रविष्ट करा.'", explanation: "हा एक सापळा आहे! कायदेशीर बक्षिसांसाठी तुमच्या क्रेडिट कार्ड माहितीची आवश्यकता नसते." } },
+            { type: "TRUTH", en: { text: "Your phone's app store notifies you of available updates for your installed applications.", explanation: "This is truth. Updating apps through the official store is a standard security practice." }, mr: { text: "तुमच्या फोनचा ॲप स्टोअर तुम्हाला तुमच्या स्थापित ॲप्ससाठी उपलब्ध अद्यतनांची सूचना देतो.", explanation: "हे सत्य आहे. अधिकृत स्टोअरद्वारे ॲप्स अद्यतनित करणे ही एक मानक सुरक्षा सराव आहे." } },
+        ];
+        
+        // --- Sound Effects ---
+        let correctSound, incorrectSound;
+        function setupSounds() {
+            correctSound = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.2 } }).toDestination();
+            incorrectSound = new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.01, decay: 0.4, sustain: 0, release: 0.2 } }).toDestination();
+        }
+
+        // --- High Score Logic ---
+        function loadHighScore() { highScore = localStorage.getItem('truthOrTrapHighScore') || 0; highScoreEl.innerText = highScore; }
+        function saveHighScore() { if (score > highScore) { highScore = score; localStorage.setItem('truthOrTrapHighScore', highScore); highScoreEl.innerText = highScore; } }
+
+        // --- Language and UI Update ---
+        function selectLanguage(lang) {
+            currentLanguage = lang;
+            languageModal.classList.add('hidden');
+            modal.classList.remove('hidden');
+            
+            // Apply Marathi font class if needed
+            document.body.classList.toggle('marathi', lang === 'mr');
+            
+            updateUIText();
+            initializeGame();
+        }
+
+        function updateUIText() {
+            const t = uiText[currentLanguage];
+            document.getElementById('score-label').innerText = t.score;
+            document.getElementById('lives-label').innerText = t.lives;
+            document.getElementById('highscore-label').innerText = t.highScore;
+            trapIndicator.innerText = t.trap;
+            truthIndicator.innerText = t.truth;
+            trapBtn.innerText = t.trap;
+            truthBtn.innerText = t.truth;
+            modalTitle.innerText = t.welcomeTitle;
+            modalText.innerText = t.welcomeText;
+            retryWebcamButton.innerText = t.retryWebcam;
+        }
+
+        // --- AI Model and Webcam Setup ---
+        async function setupCamera() {
+            modalButton.disabled = true;
+            modalButton.innerText = uiText[currentLanguage].loadingModels;
+            retryWebcamButton.classList.add('hidden');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                video.style.display = 'block';
+                return new Promise(resolve => { video.onloadedmetadata = () => resolve(video); });
+            } catch (err) {
+                console.error("Webcam access denied.", err);
+                modalTitle.innerText = uiText[currentLanguage].webcamDeniedTitle;
+                modalText.innerHTML = uiText[currentLanguage].webcamDeniedText;
+                modalButton.disabled = true;
+                modalButton.innerText = uiText[currentLanguage].webcamDeniedBtn;
+                retryWebcamButton.classList.remove('hidden');
+                buttonControls.style.display = 'flex';
+                video.style.display = 'none';
+                return null;
+            }
+        }
+
+        async function initializeGame() {
+            const camera = await setupCamera();
+            if (camera) {
+                await loadModels();
+            } else {
+                modalButton.disabled = false;
+                modalButton.innerText = uiText[currentLanguage].buttonsOnly;
+                modalButton.onclick = () => { Tone.start(); startGame(); };
+            }
+        }
+
+        async function loadModels() {
+            const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+            modalButton.innerText = uiText[currentLanguage].loadingModels;
+            try {
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
+                ]);
+                modalButton.disabled = false;
+                modalButton.innerText = uiText[currentLanguage].letsGo;
+                modalButton.onclick = () => { Tone.start(); startGame(); };
+            } catch (error) {
+                console.error("Failed to load models:", error);
+                modalTitle.innerText = uiText[currentLanguage].modelErrorTitle;
+                modalText.innerHTML = uiText[currentLanguage].modelErrorText;
+                modalButton.disabled = true;
+                modalButton.innerText = uiText[currentLanguage].modelErrorBtn;
+            }
+        }
+
+        // --- Game Logic ---
+        function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } }
+        
+        function startGame() {
+            score = 0;
+            lives = 3;
+            answerMade = false;
+            scenarios = [...gameScenarios];
+            shuffleArray(scenarios);
+            currentScenarioIndex = -1;
+            updateHUD();
+            modal.style.opacity = 0;
+            modal.style.visibility = "hidden";
+            gameActive = true;
+            buttonControls.style.display = 'flex';
+            loadNextScenario();
+        }
+
+        function loadNextScenario() {
+            answerMade = false;
+            scenarioCard.className = '';
+            resultIcon.innerText = '';
+            currentScenarioIndex++;
+            if (currentScenarioIndex >= scenarios.length || lives <= 0) {
+                endGame();
+                return;
+            }
+            scenarioTextEl.innerText = scenarios[currentScenarioIndex][currentLanguage].text;
+        }
+
+        function checkAnswer(userAnswer) {
+            if (!gameActive || answerMade) return;
+            answerMade = true;
+            
+            const current = scenarios[currentScenarioIndex];
+            const t = uiText[currentLanguage];
+
+            if (userAnswer === current.type) {
+                score++;
+                scenarioCard.classList.add('correct');
+                resultIcon.innerText = '✅';
+                modalTitle.innerText = t.correct;
+                modalTitle.style.color = '#84cc16';
+                correctSound.triggerAttackRelease("C5", "8n");
+            } else {
+                lives--;
+                scenarioCard.classList.add('incorrect');
+                resultIcon.innerText = '❌';
+                modalTitle.innerText = t.incorrect;
+                modalTitle.style.color = '#f97316';
+                incorrectSound.triggerAttackRelease("C3", "8n");
+            }
+            updateHUD();
+            
+            modalText.innerText = current[currentLanguage].explanation;
+            modalButton.innerText = t.nextQuestion;
+            modal.style.opacity = 1;
+            modal.style.visibility = "visible";
+            modalButton.onclick = () => {
+                modal.style.opacity = 0;
+                modal.style.visibility = "hidden";
+                loadNextScenario();
+            };
+        }
+
+        function updateHUD() { scoreEl.innerText = score; livesEl.innerText = '❤️'.repeat(lives); }
+
+        function endGame() {
+            gameActive = false;
+            saveHighScore();
+            const t = uiText[currentLanguage];
+            modalTitle.innerText = t.gameOver;
+            modalTitle.style.color = '#1e3a8a';
+            modalText.innerText = t.gameOverText(score, highScore);
+            modalButton.innerText = t.playAgain;
+            modalButton.onclick = startGame;
+            modal.style.opacity = 1;
+            modal.style.visibility = "visible";
+            buttonControls.style.display = 'none';
+        }
+        
+        // --- Event Listeners & Head Tilt Detection ---
+        langEnBtn.addEventListener('click', () => selectLanguage('en'));
+        langMrBtn.addEventListener('click', () => selectLanguage('mr'));
+        trapBtn.addEventListener('click', () => checkAnswer('TRAP'));
+        truthBtn.addEventListener('click', () => checkAnswer('TRUTH'));
+        retryWebcamButton.addEventListener('click', initializeGame);
+
+        video.addEventListener('play', () => {
+            const tiltThreshold = 10;
+            let lastAnswer = null;
+            let decisionTimeout;
+
+            setInterval(async () => {
+                if (!gameActive || answerMade || !video.srcObject) {
+                    truthIndicator.classList.remove('active');
+                    trapIndicator.classList.remove('active');
+                    return;
+                }
+                const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+                if (detections) {
+                    const left = detections.landmarks.getLeftEye();
+                    const right = detections.landmarks.getRightEye();
+                    const leftCenter = left.reduce((acc, pos) => ({ x: acc.x + pos.x / left.length, y: acc.y + pos.y / left.length }), { x: 0, y: 0 });
+                    const rightCenter = right.reduce((acc, pos) => ({ x: acc.x + pos.x / right.length, y: acc.y + pos.y / right.length }), { x: 0, y: 0 });
+                    const angle = Math.atan2(rightCenter.y - leftCenter.y, rightCenter.x - leftCenter.x) * (180 / Math.PI);
+                    
+                    if (angle < -tiltThreshold) {
+                        truthIndicator.classList.add('active');
+                        trapIndicator.classList.remove('active');
+                        if (lastAnswer !== 'TRUTH') { clearTimeout(decisionTimeout); decisionTimeout = setTimeout(() => checkAnswer('TRUTH'), 250); lastAnswer = 'TRUTH'; }
+                    } else if (angle > tiltThreshold) {
+                        trapIndicator.classList.add('active');
+                        truthIndicator.classList.remove('active');
+                        if (lastAnswer !== 'TRAP') { clearTimeout(decisionTimeout); decisionTimeout = setTimeout(() => checkAnswer('TRAP'), 250); lastAnswer = 'TRAP'; }
+                    } else {
+                        truthIndicator.classList.remove('active');
+                        trapIndicator.classList.remove('active');
+                        lastAnswer = null;
+                        clearTimeout(decisionTimeout);
+                    }
+                } else {
+                    truthIndicator.classList.remove('active');
+                    trapIndicator.classList.remove('active');
+                }
+            }, 100);
+        });
+
+        // --- Initial Load ---
+        function main() {
+            setupSounds();
+            loadHighScore();
+            buttonControls.style.display = 'none';
+            modal.classList.add('hidden');
+        }
+
+        main();
+    </script>
+</body>
+</html>
