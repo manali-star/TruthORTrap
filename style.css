@@ -1,147 +1,252 @@
- body {
-            font-family: 'Fredoka One', cursive;
-            background-color: #e0f2fe; /* Light sky blue */
-            color: #1e3a8a; /* Dark blue text */
-            overflow: hidden;
-            letter-spacing: 1px;
-        }
-        
-        /* Add Hind font for Marathi text */
-        .marathi {
-            font-family: 'Hind', sans-serif;
-            font-weight: 700;
-        }
+:root {
+    --primary: #2563eb;
+    --secondary: #3b82f6;
+    --correct: #10b981;
+    --incorrect: #ef4444;
+    --glass: rgba(255, 255, 255, 0.2);
+    --glass-border: rgba(255, 255, 255, 0.3);
+    --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+}
 
-        #video {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            width: 120px;
-            height: 90px;
-            border-radius: 12px;
-            border: 4px solid #7dd3fc; /* Brighter blue border */
-            transform: scaleX(-1); /* Mirror the video */
-            object-fit: cover;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
+body {
+    font-family: 'Fredoka One', cursive;
+    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    color: white;
+    overflow: hidden;
+    height: 100vh;
+}
 
-        #game-container {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            width: 100vw;
-            padding: 20px;
-        }
+.marathi {
+    font-family: 'Hind', sans-serif;
+    font-weight: 700;
+}
 
-        .side-indicator {
-            position: fixed;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 3rem;
-            font-weight: 700;
-            opacity: 0.2;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            -webkit-text-stroke: 2px #1e3a8a20;
-            color: transparent;
-        }
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
 
-        #trap-indicator { left: 4%; }
-        #truth-indicator { right: 4%; }
+#video {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    transform: scaleX(-1);
+}
 
-        .side-indicator.active {
-            opacity: 1;
-            transform: translateY(-50%) scale(1.5);
-            -webkit-text-stroke: 0;
-        }
+#glass-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    padding: 20px;
+}
 
-        #trap-indicator.active { color: #f97316; } /* Orange-Red */
-        #truth-indicator.active { color: #84cc16; } /* Lime Green */
+#score-board {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(5px);
+    border-radius: 15px;
+    padding: 15px;
+    box-shadow: var(--glass-shadow);
+}
 
-        #scenario-card {
-            background-color: white;
-            border: 4px solid #7dd3fc;
-            border-radius: 20px;
-            padding: 2rem;
-            width: 100%;
-            max-width: 600px;
-            min-height: 250px;
-            text-align: center;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            transition: transform 0.3s ease, border-color 0.3s ease;
-            font-size: 1.5rem; /* Base font size */
-        }
-        
-        #result-icon {
-            position: absolute;
-            font-size: 8rem;
-            opacity: 0;
-            transform: scale(0.5);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
+#controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
 
-        #scenario-card.correct { border-color: #84cc16; transform: scale(1.05); }
-        #scenario-card.correct #result-icon { opacity: 0.15; transform: scale(1); color: #84cc16; }
-        #scenario-card.incorrect { border-color: #f97316; transform: scale(1.05); animation: shake 0.5s; }
-        #scenario-card.incorrect #result-icon { opacity: 0.15; transform: scale(1); color: #f97316; }
+.control-btn {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(5px);
+    border-radius: 50px;
+    padding: 10px 15px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: var(--glass-shadow);
+}
 
-        @keyframes shake {
-            0%, 100% { transform: translateX(0) scale(1.05); }
-            25% { transform: translateX(-10px) scale(1.05); }
-            75% { transform: translateX(10px) scale(1.05); }
-        }
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
 
-        #score-board {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #0369a1;
-            background-color: rgba(255,255,255,0.7);
-            padding: 8px 16px;
-            border-radius: 12px;
-            text-align: right;
-        }
-        
-        #high-score { font-size: 0.9rem; opacity: 0.8; }
-        #modal, #language-modal { transition: opacity 0.3s ease, visibility 0.3s ease; }
-        
-        .modal-content {
-            background-color: #f0f9ff;
-            border: 4px solid #7dd3fc;
-            box-shadow: 0 0 50px rgba(125, 211, 252, 0.5);
-        }
+#scenario-card {
+    background: var(--glass);
+    border: 2px solid var(--glass-border);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    width: 90%;
+    max-width: 800px;
+    min-height: 200px;
+    text-align: center;
+    position: relative;
+    transition: all 0.3s ease;
+    font-size: 1.5rem;
+    box-shadow: var(--glass-shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-        .modal-button {
-            transition: transform 0.2s ease;
-            box-shadow: 0 4px #1d4ed8;
-            border: none;
-        }
-        .modal-button:hover { transform: scale(1.05); }
-        .modal-button:active { transform: translateY(2px); box-shadow: 0 2px #1d4ed8; }
-        
-        #button-controls { margin-top: 2rem; display: flex; gap: 1.5rem; }
-        .control-btn { padding: 1rem 2rem; font-size: 1.5rem; border-radius: 15px; border: none; color: white; cursor: pointer; transition: all 0.2s ease; }
-        #trap-btn { background-color: #f97316; box-shadow: 0 5px #c2410c; }
-        #trap-btn:active { transform: translateY(3px); box-shadow: 0 2px #c2410c; }
-        #truth-btn { background-color: #84cc16; box-shadow: 0 5px #4d7c0f; }
-        #truth-btn:active { transform: translateY(3px); box-shadow: 0 2px #4d7c0f; }
-        
-        @media (max-width: 640px) {
-            .side-indicator { font-size: 2rem; }
-            #scenario-card { font-size: 1.1rem; padding: 1.5rem; min-height: 200px; }
-            #score-board { font-size: 1rem; top: 10px; right: 10px; }
-            #video { width: 80px; height: 60px; }
-            .modal-title { font-size: 2rem; }
-            .modal-text { font-size: 1rem; }
-            .modal-button { font-size: 1.2rem; padding: 0.75rem 1.5rem; }
-            #button-controls { gap: 1rem; }
-            .control-btn { padding: 0.8rem 1.5rem; font-size: 1.2rem; }
-        }
+#scenario-card.correct {
+    border-color: var(--correct);
+    background: rgba(16, 185, 129, 0.2);
+}
+
+#scenario-card.incorrect {
+    border-color: var(--incorrect);
+    background: rgba(239, 68, 68, 0.2);
+    animation: shake 0.5s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+}
+
+#result-icon {
+    position: absolute;
+    font-size: 8rem;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+#scenario-card.correct #result-icon,
+#scenario-card.incorrect #result-icon {
+    opacity: 0.3;
+    transform: scale(1);
+}
+
+#gesture-instruction {
+    width: 100%;
+    max-width: 500px;
+}
+
+.gesture {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 15px;
+    box-shadow: var(--glass-shadow);
+    min-width: 120px;
+}
+
+.gesture span {
+    font-size: 2rem;
+    margin-bottom: 5px;
+}
+
+.gesture p {
+    font-weight: bold;
+    margin-bottom: 0;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    backdrop-filter: blur(5px);
+}
+
+.modal.d-none {
+    display: none !important;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    width: 90%;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal h2 {
+    color: var(--primary);
+    margin-bottom: 1rem;
+}
+
+.modal p {
+    margin-bottom: 2rem;
+    color: #333;
+}
+
+.class-option {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 15px;
+}
+
+.class-option:hover {
+    background: var(--secondary);
+    transform: translateY(-3px);
+}
+
+@media (max-width: 768px) {
+    #scenario-card {
+        font-size: 1.2rem;
+        padding: 1.5rem;
+        min-height: 150px;
+    }
+    
+    #gesture-instruction {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    #score-board {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    .gesture {
+        padding: 10px 15px;
+        width: 100%;
+    }
+    
+    .gesture span {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    #scenario-card {
+        font-size: 1rem;
+        padding: 1rem;
+    }
+    
+    .modal-content {
+        padding: 1.5rem;
+    }
+}
